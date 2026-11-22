@@ -1,0 +1,32 @@
+services:
+  api:
+    build: .
+    image: local-mapreduce-5xx:latest
+    container_name: mapreduce-5xx-api
+    ports:
+      - "8000:8000"
+    environment:
+      MAPREDUCE_DATA_DIR: /srv/data
+      # Keep exactly one re-map per corrupted shard.  Set to 2 or 3 to allow
+      # a corrupted re-map output to be retried again.
+      MAPREDUCE_REMAP_ATTEMPTS: "1"
+      # Widen the race window for the concurrent-remap demo.
+      MAPREDUCE_REMAP_DELAY_SECONDS: "0"
+      # Test-only fault injection endpoints: enable for the demo, 0 elsewhere.
+      MAPREDUCE_ENABLE_DEBUG_ENDPOINTS: "1"
+    volumes:
+      - mapreduce-data:/srv/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  mapreduce-data:
